@@ -1,17 +1,26 @@
+import { useState } from 'react';
+import emailjs from '@emailjs/browser';
 import bookingBackground from '../../assets/booking.PNG';
 import { ArrowRightIcon, FeatureIcon } from '../../components/ui/Icon';
 
 const timeSlots = ['9:30 AM', '10:30 AM', '11:30 AM', '12:30 PM', '1:30 PM', '2:30 PM', '3:30 PM', '4:30 PM', '5:30 PM', '6:30 PM'];
 
-const dateSlots = [
-  { day: 'Sun', date: '18', month: 'May' },
-  { day: 'Mon', date: '19', month: 'May' },
-  { day: 'Tue', date: '20', month: 'May', active: true },
-  { day: 'Wed', date: '21', month: 'May' },
-  { day: 'Thu', date: '22', month: 'May' },
-  { day: 'Fri', date: '23', month: 'May' },
-  { day: 'Sat', date: '24', month: 'May' },
-];
+const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function getDateSlots() {
+  const today = new Date();
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + index);
+    return {
+      key: date.toDateString(),
+      day: dayNames[date.getDay()],
+      date: String(date.getDate()),
+      month: monthNames[date.getMonth()],
+      year: date.getFullYear(),
+    };
+  });
+}
 
 const bookingFeatures = [
   {
@@ -31,7 +40,7 @@ const bookingFeatures = [
   },
 ];
 
-function Field({ number, label, placeholder, icon }) {
+function Field({ number, label, placeholder, icon, type = 'text', value, onChange }) {
   return (
     <label className="block">
       <span className="mb-1.5 flex min-h-7 items-center gap-3 text-sm font-bold text-black sm:text-base">
@@ -41,7 +50,10 @@ function Field({ number, label, placeholder, icon }) {
       <input
         className="h-10 w-full rounded-lg border border-slate-200 bg-white px-5 text-sm font-medium text-black shadow-[0_6px_18px_rgba(15,23,42,0.05)] outline-none transition placeholder:text-black/75 focus:border-primary focus:ring-4 focus:ring-primary/10 sm:text-base"
         placeholder={placeholder}
-        type="text"
+        type={type}
+        value={value}
+        onChange={onChange}
+        required
       />
     </label>
   );
@@ -88,26 +100,68 @@ function BookingFeatureList() {
 }
 
 function AppointmentForm() {
+  const [dateSlots] = useState(getDateSlots);
+  const [selectedDate, setSelectedDate] = useState(dateSlots[0]?.key);
+  const [selectedTime, setSelectedTime] = useState(timeSlots[0]);
+  const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle');
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setStatus('sending');
+
+    const slot = dateSlots.find((item) => item.key === selectedDate);
+    const dateLabel = slot ? `${slot.day}, ${slot.date} ${slot.month} ${slot.year}` : selectedDate;
+
+    const templateParams = {
+      from_name: name,
+      user_name: name,
+      user_mobile: mobile,
+      user_email: email,
+      email: email,
+      reply_to: email,
+      selected_date: dateLabel,
+      appointment_date: dateLabel,
+      selected_time: selectedTime,
+      appointment_time: selectedTime,
+    };
+
+    try {
+      await emailjs.send('service_69m1iu2', 'template_eimdblu', templateParams, {
+        publicKey: 'vk29Tc09XLpHOYXEz',
+      });
+      setStatus('success');
+    } catch (error) {
+      console.error(error);
+      setStatus('error');
+    }
+  };
+
   return (
-    <form className="w-full max-w-[650px] rounded-[24px] bg-white/95 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.02] sm:p-5 lg:p-6">
+    <form className="w-full max-w-[650px] rounded-[24px] bg-white/95 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.02] sm:p-5 lg:p-6" onSubmit={handleSubmit}>
       <div className="space-y-3">
-        <Field number="1" label="Full Name" placeholder="Enter your full name" icon={<UserIcon />} />
-        <Field number="2" label="Mobile Number" placeholder="Enter your mobile number" icon={<PhoneIcon />} />
-        <Field number="3" label="Email Address" placeholder="Enter your email address" icon={null} />
+        <Field number="1" label="Full Name" placeholder="Enter your full name" icon={<UserIcon />} value={name} onChange={(e) => setName(e.target.value)} />
+        <Field number="2" label="Mobile Number" placeholder="Enter your mobile number" icon={<PhoneIcon />} type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} />
+        <Field number="3" label="Email Address" placeholder="Enter your email address" icon={null} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
 
       <div className="mt-4">
         <p className="mb-2 text-sm font-bold text-black sm:text-base">4. Select Date</p>
         <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
           {dateSlots.map((slot) => (
-            <div key={slot.day} className="text-center">
+            <div key={slot.key} className="text-center">
               <p className="mb-1 text-xs font-bold text-black">{slot.day}</p>
               <button
                 className={[
                   'h-10 w-full rounded-xl border text-sm font-bold transition',
-                  slot.active ? 'border-primary bg-primary text-white shadow-[0_10px_22px_rgba(233,30,140,0.22)]' : 'border-slate-200 bg-white text-black hover:border-primary',
+                  selectedDate === slot.key
+                    ? 'border-primary bg-primary text-white shadow-[0_10px_22px_rgba(233,30,140,0.22)]'
+                    : 'border-slate-200 bg-white text-black hover:border-primary',
                 ].join(' ')}
                 type="button"
+                onClick={() => setSelectedDate(slot.key)}
               >
                 <span className="block text-sm leading-tight">{slot.date}</span>
                 <span className="block text-xs font-medium">{slot.month}</span>
@@ -120,14 +174,17 @@ function AppointmentForm() {
       <div className="mt-4">
         <p className="mb-2 text-sm font-bold text-black sm:text-base">5. Select Time</p>
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-          {timeSlots.map((time, index) => (
+          {timeSlots.map((time) => (
             <button
               key={time}
               className={[
                 'h-8 rounded-lg border-2 text-xs font-semibold transition sm:text-sm',
-                index === 0 ? 'border-primary bg-primary text-white shadow-[0_10px_22px_rgba(233,30,140,0.24)]' : 'border-primary/25 bg-white text-primary hover:border-primary',
+                selectedTime === time
+                  ? 'border-primary bg-primary text-white shadow-[0_10px_22px_rgba(233,30,140,0.24)]'
+                  : 'border-primary/25 bg-white text-primary hover:border-primary',
               ].join(' ')}
               type="button"
+              onClick={() => setSelectedTime(time)}
             >
               {time}
             </button>
@@ -135,10 +192,24 @@ function AppointmentForm() {
         </div>
       </div>
 
-      <button className="mt-4 flex h-11 w-full items-center justify-center gap-4 rounded-xl bg-primary text-base font-semibold text-white shadow-[0_16px_30px_rgba(233,30,140,0.24)] transition hover:bg-primary-dark" type="button">
-        Send
-        <ArrowRightIcon className="h-5 w-5" />
+      <button
+        className="mt-4 flex h-11 w-full items-center justify-center gap-4 rounded-xl bg-primary text-base font-semibold text-white shadow-[0_16px_30px_rgba(233,30,140,0.24)] transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+        type="submit"
+        disabled={status === 'sending'}
+      >
+        {status === 'sending' ? 'Sending...' : 'Send'}
+        {status !== 'sending' && <ArrowRightIcon className="h-5 w-5" />}
       </button>
+      {status === 'success' && (
+        <p className="mt-3 text-center text-sm font-semibold text-green-600">
+          Thank you! Your appointment request has been sent. We&apos;ll confirm with you soon.
+        </p>
+      )}
+      {status === 'error' && (
+        <p className="mt-3 text-center text-sm font-semibold text-red-600">
+          Something went wrong. Please try again or call us directly.
+        </p>
+      )}
       <p className="mt-2 text-center text-xs font-medium tracking-wide text-black/85">Your information is safe with us.</p>
     </form>
   );

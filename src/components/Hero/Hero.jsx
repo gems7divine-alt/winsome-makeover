@@ -24,7 +24,7 @@ function FeatureList() {
 
 export default function Hero({ onBookAppointment, onExploreServices }) {
   return (
-    <section className="relative min-h-screen overflow-hidden bg-white">
+    <section id="home" className="relative min-h-screen overflow-hidden bg-white scroll-mt-24">
       <div
        className="absolute inset-0 bg-no-repeat bg-[length:auto_100%] opacity-100 bg-[position:80%_center] sm:bg-right sm:bg-[position:right_-30px] sm:bg-[length:auto_108%]"
         style={{ backgroundImage: `url(${homeBackground})` }}
